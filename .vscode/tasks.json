@@ -16,19 +16,17 @@
   "tasks": [
     {
       "type": "shell",
-      "label": "cl.exe build active file",
-      "command": "cl.exe",
+      "label": "cmake build",
+      "command": "cmake",
       "args": [
-        "/Zi",
-        "/EHsc",
-        "/Fe:",
-        "/std:c++20",
-        "${fileDirname}\\${fileBasenameNoExtension}.exe",
-        "${file}"
+        "-S",
+        ".",
+        "-B",
+        "build",
+        "-G",
+        "Ninja"
       ],
-      "problemMatcher": [
-        "$msCompile"
-      ],
+      "problemMatcher": [],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -40,7 +38,7 @@
       "command": "cmake",
       "args": [
         "--build",
-        "build",
+        "build"
       ]
     }
   ]
