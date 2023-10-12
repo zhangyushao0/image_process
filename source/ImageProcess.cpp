@@ -65,7 +65,7 @@ QImage ImageProcess::displayHistogram(const QImage &inputImage) {
   double maxHeight = 0;
   cv::minMaxLoc(hist, 0, &maxHeight, 0, 0);
   for (int i = 0; i < 256; i++) {
-    float binValue = hist.at<float>(i);
+    int binValue = hist.at<int>(i);
     int intensity = static_cast<int>(binValue * 256 / maxHeight);
     cv::line(histImage, cv::Point(i, 256), cv::Point(i, 256 - intensity),
              cv::Scalar(255, 255, 255));
@@ -84,24 +84,31 @@ QImage ImageProcess::histogramEqualization(const QImage &inputImage) {
                         (uchar *)inputImage.bits());
   cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
   // 直方图均衡化，具体实现为计算累计直方图，然后将累计直方图归一化，最后将原图像的像素值映射到新的像素值
-  myEqualizeHist(mat, mat);
-  QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
+  cv::Mat dst;
+  myEqualizeHist(mat, dst);
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
                       .copy();
   return result;
 }
 
-QImage ImageProcess::applyCLAHE(const QImage &inputImage, int clipLimit,
+QImage ImageProcess::applyCLAHE(const QImage &inputImage, float clipLimit,
                                 int tileGridSize) {
   // 将QImage转换为cv::Mat
   cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
                         (uchar *)inputImage.bits());
   cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
 
-  // 使用自定义的CLAHE算法，具体实现为将图像分割为tiles，对每个tile进行直方图均衡化（使用了对比度限制），最后使用双线性插值合并tiles
-  cv::Mat dst;
-  myCreateCLAHE(mat, dst, tileGridSize, clipLimit);
+  //   //
+  //   使用自定义的CLAHE算法，具体实现为将图像分割为tiles，对每个tile进行直方图均衡化（使用了对比度限制），最后使用双线性插值合并tiles
+  //   cv::Mat dst;
+  //   myCreateCLAHE(mat, dst, tileGridSize, clipLimit);
 
+  // 使用OpenCV自带的CLAHE算法
+  cv::Ptr<cv::CLAHE> clahe =
+      cv::createCLAHE(clipLimit, cv::Size(tileGridSize, tileGridSize));
+  cv::Mat dst;
+  clahe->apply(mat, dst);
   // 转换为QImage
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
@@ -142,7 +149,7 @@ void ImageProcess::myEqualizeHist(const cv::Mat &src, cv::Mat &dst) {
 }
 
 void ImageProcess::myCreateCLAHE(const cv::Mat &src, cv::Mat &dst, int tileSize,
-                                 int clipLimit) {
+                                 float clipLimit) {
   int rows = src.rows / tileSize;
   int cols = src.cols / tileSize;
 
@@ -159,56 +166,73 @@ void ImageProcess::myCreateCLAHE(const cv::Mat &src, cv::Mat &dst, int tileSize,
     }
   }
 
-  // 使用双线性插值合并tiles
   dst = cv::Mat::zeros(src.size(), src.type());
-  for (int i = 0; i < src.rows; i++) {
-    for (int j = 0; j < src.cols; j++) {
-      int tile_i = i / tileSize;
-      int tile_j = j / tileSize;
+  // 对于每个像素位置
+  for (int y = 0; y < src.rows; y++) {
+    for (int x = 0; x < src.cols; x++) {
+      // 计算当前像素所在的tile的坐标
+      int tx = x / tileSize;
+      int ty = y / tileSize;
 
-      // 计算双线性插值的权重
-      float alpha = (j % tileSize) / (float)tileSize;
-      float beta = (i % tileSize) / (float)tileSize;
+      // 计算当前像素位置在tile中的相对位置
+      float alpha = (x % tileSize) / (float)tileSize;
+      float beta = (y % tileSize) / (float)tileSize;
 
-      int top_left = tile_i * cols + tile_j;
-      int top_right = top_left + 1;
-      int bottom_left = (tile_i + 1) * cols + tile_j;
-      int bottom_right = bottom_left + 1;
+      // 获取四个邻近的tile中的像素值
+      uchar topLeft =
+          tiles[ty * cols + tx].at<uchar>(y % tileSize, x % tileSize);
+      uchar topRight =
+          (tx + 1 < cols)
+              ? tiles[ty * cols + tx + 1].at<uchar>(y % tileSize, x % tileSize)
+              : topLeft;
+      uchar bottomLeft =
+          (ty + 1 < rows) ? tiles[(ty + 1) * cols + tx].at<uchar>(y % tileSize,
+                                                                  x % tileSize)
+                          : topLeft;
+      uchar bottomRight = (tx + 1 < cols && ty + 1 < rows)
+                              ? tiles[(ty + 1) * cols + tx + 1].at<uchar>(
+                                    y % tileSize, x % tileSize)
+                              : topLeft;
 
-      // 考虑边界情况
-      if (tile_i == rows - 1) {
-        bottom_left = top_left;
-        bottom_right = top_right;
-      }
-      if (tile_j == cols - 1) {
-        top_right = top_left;
-        bottom_right = bottom_left;
-      }
+      // 在X轴上进行线性插值
+      uchar top = alpha * topLeft + (1 - alpha) * topRight;
+      uchar bottom = alpha * bottomLeft + (1 - alpha) * bottomRight;
 
-      dst.at<uchar>(i, j) =
-          (1 - alpha) * (1 - beta) *
-              tiles[top_left].at<uchar>(i % tileSize, j % tileSize) +
-          alpha * (1 - beta) *
-              tiles[top_right].at<uchar>(i % tileSize, j % tileSize) +
-          (1 - alpha) * beta *
-              tiles[bottom_left].at<uchar>(i % tileSize, j % tileSize) +
-          alpha * beta *
-              tiles[bottom_right].at<uchar>(i % tileSize, j % tileSize);
+      // 在Y轴上进行线性插值
+      uchar interpolatedValue = beta * top + (1 - beta) * bottom;
+
+      dst.at<uchar>(y, x) = interpolatedValue;
     }
   }
+  //   // 初始化一个空的目标图像
+  //   dst = cv::Mat::zeros(src.size(), src.type());
+
+  //   // 遍历每一个tile
+  //   for (int i = 0; i < rows; i++) {
+  //     for (int j = 0; j < cols; j++) {
+  //       // 计算当前tile在目标图像中的位置
+  //       cv::Rect region(j * tileSize, i * tileSize, tileSize, tileSize);
+
+  //       // 将tile复制到目标图像的适当位置
+  //       tiles[i * cols + j].copyTo(dst(region));
+  //     }
+  //   }
 }
 
 void ImageProcess::myEqualizeHistWithClipLimit(const cv::Mat &src, cv::Mat &dst,
-                                               int clipLimit) {
+                                               float clipLimit) {
   cv::Mat hist;
   myCalcHist(src, hist, 256);
+  double maxHeight = 0;
+  cv::minMaxLoc(hist, 0, (double *)&maxHeight, 0, 0);
 
+  int clipLimit_ = clipLimit * maxHeight;
   // 对比度限制
   int excess = 0;
   for (int i = 0; i < 256; i++) {
-    if (hist.at<int>(i) > clipLimit) {
-      excess += hist.at<int>(i) - clipLimit;
-      hist.at<int>(i) = clipLimit;
+    if (hist.at<int>(i) > clipLimit_) {
+      excess += hist.at<int>(i) - clipLimit_;
+      hist.at<int>(i) = clipLimit_;
     }
   }
 

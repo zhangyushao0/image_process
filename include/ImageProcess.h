@@ -10,15 +10,15 @@ public:
   QImage fourierTransform(const QImage &inputImage);
   QImage displayHistogram(const QImage &inputImage);
   QImage histogramEqualization(const QImage &inputImage);
-  QImage applyCLAHE(const QImage &inputImage, int clipLimit = 2,
-                    int tileGridSize = 8);
+  QImage applyCLAHE(const QImage &inputImage, float clipLimit = 0.2,
+                    int tileGridSize = 16);
 
 private:
   void myCalcHist(const cv::Mat &src, cv::Mat &hist, int histSize);
   void myEqualizeHist(const cv::Mat &src, cv::Mat &dst);
   void myCreateCLAHE(const cv::Mat &src, cv::Mat &dst, int tileSize,
-                     int clipLimit);
+                     float clipLimit);
   void myEqualizeHistWithClipLimit(const cv::Mat &src, cv::Mat &dst,
-                                   int clipLimit);
+                                   float clipLimit);
 };
 #endif // IMAGEPROCESS_H
