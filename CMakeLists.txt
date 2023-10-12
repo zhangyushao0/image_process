@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(image_process VERSION 0.1 LANGUAGES CXX)
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(MAIN_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(MAIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -27,6 +27,7 @@ qt_add_qml_module(appimage_process
     VERSION 1.0
     QML_FILES Main.qml
     QML_FILES WindowFT.qml
+    QML_FILES WindowHistogram.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
