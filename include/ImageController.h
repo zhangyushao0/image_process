@@ -18,7 +18,7 @@ public:
   ImageProvider *getImageProvider() { return &imageProvider; }
   Q_INVOKABLE void ft(const QUrl &url) {
     QImage image(url.toLocalFile());
-    imageProvider.setImage(imageProcess.processFourierTransform(image),
+    imageProvider.setImage(imageProcess.fourierTransform(image),
                            url.toString() + "ft");
   }
   Q_INVOKABLE void displayHistogram(const QUrl &url) {

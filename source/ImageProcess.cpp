@@ -1,1 +1,237 @@
 #include "ImageProcess.h"
+#include <opencv2/core.hpp>
+#include <opencv2/core/mat.hpp>
+#include <qimage.h>
+
+ImageProcess::ImageProcess() {}
+QImage ImageProcess::fourierTransform(const QImage &inputImage) {
+  // 将QImage转换为cv::Mat
+  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
+                        (uchar *)inputImage.bits());
+
+  // 转换为灰度图
+  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+
+  // 将图像转换为浮点型
+  mat.convertTo(mat, CV_32F);
+
+  // 执行傅里叶变换
+  cv::Mat planes[] = {cv::Mat_<float>(mat), cv::Mat::zeros(mat.size(), CV_32F)};
+  cv::Mat complexImg;
+  cv::merge(planes, 2, complexImg);
+  cv::dft(complexImg, complexImg);
+
+  // 分离频域图像的实部和虚部
+  cv::split(complexImg, planes);
+  cv::Mat mag;
+  cv::magnitude(planes[0], planes[1], mag);
+
+  // 对数缩放
+  mag += cv::Scalar::all(1);
+  cv::log(mag, mag);
+
+  // 剪切和重分布图像频谱
+  cv::normalize(mag, mag, 0, 255, cv::NORM_MINMAX);
+  mag.convertTo(mag, CV_8U);
+
+  // 转换为QImage
+  cv::cvtColor(mag, mag, cv::COLOR_GRAY2RGB);
+  QImage result = QImage((uchar *)mag.data, mag.cols, mag.rows, mag.step,
+                         QImage::Format_RGB888)
+                      .copy();
+
+  return result;
+}
+
+QImage ImageProcess::displayHistogram(const QImage &inputImage) {
+  // 将QImage转换为cv::Mat
+  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
+                        (uchar *)inputImage.bits());
+  // 转换为灰度图
+  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+
+  // 直方图参数
+  int histSize = 256;
+  float range[] = {0, 256};
+  const float *histRange = {range};
+
+  // 计算直方图
+  cv::Mat hist;
+  // 具体实现为遍历图像的每个像素，将其值作为索引，将对应的直方图值加一
+  myCalcHist(mat, hist, histSize);
+
+  // 绘制直方图
+  cv::Mat histImage(256, 256, CV_8UC3, cv::Scalar(0, 0, 0));
+  double maxHeight = 0;
+  cv::minMaxLoc(hist, 0, &maxHeight, 0, 0);
+  for (int i = 0; i < 256; i++) {
+    float binValue = hist.at<float>(i);
+    int intensity = static_cast<int>(binValue * 256 / maxHeight);
+    cv::line(histImage, cv::Point(i, 256), cv::Point(i, 256 - intensity),
+             cv::Scalar(255, 255, 255));
+  }
+
+  // 转换为QImage
+  QImage result = QImage((uchar *)histImage.data, histImage.cols,
+                         histImage.rows, histImage.step, QImage::Format_RGB888)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::histogramEqualization(const QImage &inputImage) {
+  // 将QImage转换为cv::Mat
+  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
+                        (uchar *)inputImage.bits());
+  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+  // 直方图均衡化，具体实现为计算累计直方图，然后将累计直方图归一化，最后将原图像的像素值映射到新的像素值
+  myEqualizeHist(mat, mat);
+  QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::applyCLAHE(const QImage &inputImage, int clipLimit,
+                                int tileGridSize) {
+  // 将QImage转换为cv::Mat
+  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
+                        (uchar *)inputImage.bits());
+  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+
+  // 使用自定义的CLAHE算法，具体实现为将图像分割为tiles，对每个tile进行直方图均衡化（使用了对比度限制），最后使用双线性插值合并tiles
+  cv::Mat dst;
+  myCreateCLAHE(mat, dst, tileGridSize, clipLimit);
+
+  // 转换为QImage
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+void ImageProcess::myCalcHist(const cv::Mat &src, cv::Mat &hist, int histSize) {
+  hist = cv::Mat::zeros(1, histSize, CV_32SC1);
+  for (int r = 0; r < src.rows; r++) {
+    for (int c = 0; c < src.cols; c++) {
+      hist.at<int>(src.at<uchar>(r, c))++;
+    }
+  }
+}
+
+void ImageProcess::myEqualizeHist(const cv::Mat &src, cv::Mat &dst) {
+  cv::Mat hist;
+  myCalcHist(src, hist, 256);
+
+  // 计算累计直方图
+  cv::Mat cdf = cv::Mat::zeros(1, 256, CV_32SC1);
+  cdf.at<int>(0) = hist.at<int>(0);
+  for (int i = 1; i < 256; i++) {
+    cdf.at<int>(i) = cdf.at<int>(i - 1) + hist.at<int>(i);
+  }
+
+  // 归一化
+  cdf = cdf * 255 / (src.rows * src.cols);
+
+  // 映射
+  dst = cv::Mat::zeros(src.size(), CV_8UC1);
+  for (int r = 0; r < src.rows; r++) {
+    for (int c = 0; c < src.cols; c++) {
+      dst.at<uchar>(r, c) = cdf.at<int>(src.at<uchar>(r, c));
+    }
+  }
+}
+
+void ImageProcess::myCreateCLAHE(const cv::Mat &src, cv::Mat &dst, int tileSize,
+                                 int clipLimit) {
+  int rows = src.rows / tileSize;
+  int cols = src.cols / tileSize;
+
+  std::vector<cv::Mat> tiles;
+
+  // 分割图像为tiles并进行直方图均衡化
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      cv::Rect region(j * tileSize, i * tileSize, tileSize, tileSize);
+      cv::Mat tile = src(region);
+      cv::Mat tileEqualized;
+      myEqualizeHistWithClipLimit(tile, tileEqualized, clipLimit);
+      tiles.push_back(tileEqualized);
+    }
+  }
+
+  // 使用双线性插值合并tiles
+  dst = cv::Mat::zeros(src.size(), src.type());
+  for (int i = 0; i < src.rows; i++) {
+    for (int j = 0; j < src.cols; j++) {
+      int tile_i = i / tileSize;
+      int tile_j = j / tileSize;
+
+      // 计算双线性插值的权重
+      float alpha = (j % tileSize) / (float)tileSize;
+      float beta = (i % tileSize) / (float)tileSize;
+
+      int top_left = tile_i * cols + tile_j;
+      int top_right = top_left + 1;
+      int bottom_left = (tile_i + 1) * cols + tile_j;
+      int bottom_right = bottom_left + 1;
+
+      // 考虑边界情况
+      if (tile_i == rows - 1) {
+        bottom_left = top_left;
+        bottom_right = top_right;
+      }
+      if (tile_j == cols - 1) {
+        top_right = top_left;
+        bottom_right = bottom_left;
+      }
+
+      dst.at<uchar>(i, j) =
+          (1 - alpha) * (1 - beta) *
+              tiles[top_left].at<uchar>(i % tileSize, j % tileSize) +
+          alpha * (1 - beta) *
+              tiles[top_right].at<uchar>(i % tileSize, j % tileSize) +
+          (1 - alpha) * beta *
+              tiles[bottom_left].at<uchar>(i % tileSize, j % tileSize) +
+          alpha * beta *
+              tiles[bottom_right].at<uchar>(i % tileSize, j % tileSize);
+    }
+  }
+}
+
+void ImageProcess::myEqualizeHistWithClipLimit(const cv::Mat &src, cv::Mat &dst,
+                                               int clipLimit) {
+  cv::Mat hist;
+  myCalcHist(src, hist, 256);
+
+  // 对比度限制
+  int excess = 0;
+  for (int i = 0; i < 256; i++) {
+    if (hist.at<int>(i) > clipLimit) {
+      excess += hist.at<int>(i) - clipLimit;
+      hist.at<int>(i) = clipLimit;
+    }
+  }
+
+  int avg_increament = excess / 256;
+  for (int i = 0; i < 256; i++) {
+    hist.at<int>(i) += avg_increament;
+  }
+
+  // 计算累计直方图
+  cv::Mat cdf = cv::Mat::zeros(1, 256, CV_32SC1);
+  cdf.at<int>(0) = hist.at<int>(0);
+  for (int i = 1; i < 256; i++) {
+    cdf.at<int>(i) = cdf.at<int>(i - 1) + hist.at<int>(i);
+  }
+
+  // 归一化
+  cdf = cdf * 255 / (src.rows * src.cols);
+
+  // 映射
+  dst = cv::Mat::zeros(src.size(), CV_8UC1);
+  for (int r = 0; r < src.rows; r++) {
+    for (int c = 0; c < src.cols; c++) {
+      dst.at<uchar>(r, c) = cdf.at<int>(src.at<uchar>(r, c));
+    }
+  }
+}
