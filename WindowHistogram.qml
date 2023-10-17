@@ -84,7 +84,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignCenter
                 Text {
-                    text: qsTr("直方后均衡化后图像")
+                    text: qsTr("直方均衡化后图像")
                     anchors.left: parent.left
                     anchors.top: parent.top
                 }
@@ -139,6 +139,8 @@ Item {
                 onClicked: {
                     image1.source = "";
                     image2.source = "";
+                    image3.source = "";
+                    image4.source = "";
                 }
             }
         }

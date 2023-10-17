@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QObject>
 #include <QUrl>
+#include <qimage.h>
 #include <qtmetamacros.h>
 
 class ImageController : public QObject {
@@ -35,6 +36,12 @@ public:
     QImage image(url.toLocalFile());
     imageProvider.setImage(imageProcess.applyCLAHE(image),
                            url.toString() + "applyCLAHE");
+  }
+  Q_INVOKABLE void processAfter(QString id) {
+    QSize size;
+    QImage image = imageProvider.requestImage(id, &size, size);
+    imageProvider.setImage(imageProcess.histogramEqualization(image),
+                           id + "after");
   }
 };
 #endif // IMAGECONTROLLER_H

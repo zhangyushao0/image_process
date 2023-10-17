@@ -5,12 +5,9 @@
 
 ImageProcess::ImageProcess() {}
 QImage ImageProcess::fourierTransform(const QImage &inputImage) {
-  // 将QImage转换为cv::Mat
-  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
-                        (uchar *)inputImage.bits());
-
-  // 转换为灰度图
-  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+  // 将QImage转换为cv::Mat,如果为彩色图像，需要转换为灰度图
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
 
   // 将图像转换为浮点型
   mat.convertTo(mat, CV_32F);
@@ -44,11 +41,9 @@ QImage ImageProcess::fourierTransform(const QImage &inputImage) {
 }
 
 QImage ImageProcess::displayHistogram(const QImage &inputImage) {
-  // 将QImage转换为cv::Mat
-  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
-                        (uchar *)inputImage.bits());
-  // 转换为灰度图
-  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+  // 将QImage转换为灰度图
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
 
   // 直方图参数
   int histSize = 256;
@@ -79,10 +74,10 @@ QImage ImageProcess::displayHistogram(const QImage &inputImage) {
 }
 
 QImage ImageProcess::histogramEqualization(const QImage &inputImage) {
-  // 将QImage转换为cv::Mat
-  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
-                        (uchar *)inputImage.bits());
-  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+  // 将QImage转换为灰度图
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
   // 直方图均衡化，具体实现为计算累计直方图，然后将累计直方图归一化，最后将原图像的像素值映射到新的像素值
   cv::Mat dst;
   myEqualizeHist(mat, dst);
@@ -94,10 +89,9 @@ QImage ImageProcess::histogramEqualization(const QImage &inputImage) {
 
 QImage ImageProcess::applyCLAHE(const QImage &inputImage, float clipLimit,
                                 int tileGridSize) {
-  // 将QImage转换为cv::Mat
-  cv::Mat mat = cv::Mat(inputImage.height(), inputImage.width(), CV_8UC4,
-                        (uchar *)inputImage.bits());
-  cv::cvtColor(mat, mat, cv::COLOR_BGRA2GRAY);
+  // 将QImage转换为灰度图
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
 
   //   //
   //   使用自定义的CLAHE算法，具体实现为将图像分割为tiles，对每个tile进行直方图均衡化（使用了对比度限制），最后使用双线性插值合并tiles
@@ -109,6 +103,7 @@ QImage ImageProcess::applyCLAHE(const QImage &inputImage, float clipLimit,
       cv::createCLAHE(clipLimit, cv::Size(tileGridSize, tileGridSize));
   cv::Mat dst;
   clahe->apply(mat, dst);
+
   // 转换为QImage
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
@@ -258,4 +253,11 @@ void ImageProcess::myEqualizeHistWithClipLimit(const cv::Mat &src, cv::Mat &dst,
       dst.at<uchar>(r, c) = cdf.at<int>(src.at<uchar>(r, c));
     }
   }
+}
+
+void ImageProcess::readImageToMat(const QImage &inputImage, cv::Mat &mat) {
+  QImage image = inputImage.convertToFormat(QImage::Format_Grayscale8);
+  cv::Mat temp(image.height(), image.width(), CV_8UC1, image.bits(),
+               image.bytesPerLine());
+  mat = temp.clone();
 }
