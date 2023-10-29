@@ -1,7 +1,9 @@
 #include "ImageProcess.h"
+#include <QDebug>
 #include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
 #include <qimage.h>
+#include <qsize.h>
 
 ImageProcess::ImageProcess() {}
 QImage ImageProcess::fourierTransform(const QImage &inputImage) {
@@ -17,7 +19,23 @@ QImage ImageProcess::fourierTransform(const QImage &inputImage) {
   cv::Mat complexImg;
   cv::merge(planes, 2, complexImg);
   cv::dft(complexImg, complexImg);
+  // 将低频信息移动到频谱的中心
+  int cx = complexImg.cols / 2;
+  int cy = complexImg.rows / 2;
 
+  cv::Mat q0(complexImg, cv::Rect(0, 0, cx, cy));   // 左上角图像区域
+  cv::Mat q1(complexImg, cv::Rect(cx, 0, cx, cy));  // 右上角图像区域
+  cv::Mat q2(complexImg, cv::Rect(0, cy, cx, cy));  // 左下角图像区域
+  cv::Mat q3(complexImg, cv::Rect(cx, cy, cx, cy)); // 右下角图像区域
+
+  // 交换象限（左上与右下进行交换，右上与左下进行交换）
+  cv::Mat tmp;
+  q0.copyTo(tmp);
+  q3.copyTo(q0);
+  tmp.copyTo(q3);
+  q1.copyTo(tmp);
+  q2.copyTo(q1);
+  tmp.copyTo(q2);
   // 分离频域图像的实部和虚部
   cv::split(complexImg, planes);
   cv::Mat mag;
@@ -110,7 +128,7 @@ QImage ImageProcess::applyCLAHE(const QImage &inputImage, float clipLimit,
                       .copy();
   return result;
 }
-
+// 具体实现为遍历图像的每个像素，将其值作为索引，将对应的直方图值加一
 void ImageProcess::myCalcHist(const cv::Mat &src, cv::Mat &hist, int histSize) {
   hist = cv::Mat::zeros(1, histSize, CV_32SC1);
   for (int r = 0; r < src.rows; r++) {
@@ -173,47 +191,31 @@ void ImageProcess::myCreateCLAHE(const cv::Mat &src, cv::Mat &dst, int tileSize,
       float alpha = (x % tileSize) / (float)tileSize;
       float beta = (y % tileSize) / (float)tileSize;
 
+      // 防止索引超出边界
+      int next_tx = (tx + 1 < cols) ? tx + 1 : tx;
+      int next_ty = (ty + 1 < rows) ? ty + 1 : ty;
+
       // 获取四个邻近的tile中的像素值
       uchar topLeft =
           tiles[ty * cols + tx].at<uchar>(y % tileSize, x % tileSize);
       uchar topRight =
-          (tx + 1 < cols)
-              ? tiles[ty * cols + tx + 1].at<uchar>(y % tileSize, x % tileSize)
-              : topLeft;
+          tiles[ty * cols + next_tx].at<uchar>(y % tileSize, x % tileSize);
       uchar bottomLeft =
-          (ty + 1 < rows) ? tiles[(ty + 1) * cols + tx].at<uchar>(y % tileSize,
-                                                                  x % tileSize)
-                          : topLeft;
-      uchar bottomRight = (tx + 1 < cols && ty + 1 < rows)
-                              ? tiles[(ty + 1) * cols + tx + 1].at<uchar>(
-                                    y % tileSize, x % tileSize)
-                              : topLeft;
+          tiles[next_ty * cols + tx].at<uchar>(y % tileSize, x % tileSize);
+      uchar bottomRight =
+          tiles[next_ty * cols + next_tx].at<uchar>(y % tileSize, x % tileSize);
 
       // 在X轴上进行线性插值
-      uchar top = alpha * topLeft + (1 - alpha) * topRight;
-      uchar bottom = alpha * bottomLeft + (1 - alpha) * bottomRight;
+      float top = (1 - alpha) * topLeft + alpha * topRight;
+      float bottom = (1 - alpha) * bottomLeft + alpha * bottomRight;
 
       // 在Y轴上进行线性插值
-      uchar interpolatedValue = beta * top + (1 - beta) * bottom;
+      uchar interpolatedValue = (uchar)((1 - beta) * top + beta * bottom);
 
       dst.at<uchar>(y, x) = interpolatedValue;
     }
   }
-  //   // 初始化一个空的目标图像
-  //   dst = cv::Mat::zeros(src.size(), src.type());
-
-  //   // 遍历每一个tile
-  //   for (int i = 0; i < rows; i++) {
-  //     for (int j = 0; j < cols; j++) {
-  //       // 计算当前tile在目标图像中的位置
-  //       cv::Rect region(j * tileSize, i * tileSize, tileSize, tileSize);
-
-  //       // 将tile复制到目标图像的适当位置
-  //       tiles[i * cols + j].copyTo(dst(region));
-  //     }
-  //   }
 }
-
 void ImageProcess::myEqualizeHistWithClipLimit(const cv::Mat &src, cv::Mat &dst,
                                                float clipLimit) {
   cv::Mat hist;
@@ -260,4 +262,121 @@ void ImageProcess::readImageToMat(const QImage &inputImage, cv::Mat &mat) {
   cv::Mat temp(image.height(), image.width(), CV_8UC1, image.bits(),
                image.bytesPerLine());
   mat = temp.clone();
+}
+
+QImage ImageProcess::addGaussianNoise(const QImage &inputImage, double mean,
+                                      double sigma) {
+  // 将QImage转换为灰度图 CV_8UC1
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  // 转换为CV_8SC1
+  mat.convertTo(mat, CV_16SC1);
+
+  // 添加高斯噪声
+  cv::Mat noise = cv::Mat(mat.size(), CV_16SC1);
+  cv::randn(noise, mean, sigma);
+  cv::Mat noiseImage = mat + noise;
+
+  // 转换回CV_8UC1
+  noiseImage.convertTo(noiseImage, CV_8UC1);
+
+  //  转换为QImage
+  QImage result =
+      QImage((uchar *)noiseImage.data, noiseImage.cols, noiseImage.rows,
+             noiseImage.step, QImage::Format_Grayscale8)
+          .copy();
+  return result;
+}
+QImage ImageProcess::medianBlurFilter(const QImage &inputImage,
+                                      int kernelSize) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  int kernel_size = 3; // 或者其他您想要使用的核大小
+  cv::medianBlur(mat, dst, kernel_size);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+QImage ImageProcess::meanBlurFilter(const QImage &inputImage, int kernelSize) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::Size ksize(3, 3); // 核大小，可以根据需要调整
+  cv::blur(mat, dst, ksize);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+QImage ImageProcess::nonLocalMeanFilter(const QImage &inputImage,
+                                        int templateWindowSize,
+                                        int searchWindowSize, double h) {
+  auto start = std::chrono::high_resolution_clock::now();
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  myNonLocalMeansDenoising(mat, dst, templateWindowSize, searchWindowSize, h,
+                           50.0);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  qDebug() << "nonLocalMeanFilter:" << duration.count() << "ms";
+  return result;
+}
+void ImageProcess::myNonLocalMeansDenoising(const cv::Mat &input, cv::Mat &dst,
+                                            int templateWindowSize,
+                                            int searchWindowSize, double h,
+                                            double sigma) {
+  dst = input.clone();
+  int border = templateWindowSize / 2;
+  int f = searchWindowSize / 2;
+  double h2 = h * h;
+
+  // 为输入图像创建边界
+  cv::Mat paddedInput;
+  cv::copyMakeBorder(input, paddedInput, border, border, border, border,
+                     cv::BORDER_REFLECT);
+
+  for (int i = border; i < paddedInput.rows - border; ++i) {
+    for (int j = border; j < paddedInput.cols - border; ++j) {
+      double weightSum = 0.0;
+      double resultPixel = 0.0;
+      cv::Vec3b currentPixel = paddedInput.at<cv::Vec3b>(i, j);
+
+      // 在搜索窗口内查找相似的像素
+      for (int k = i - f; k <= i + f; ++k) {
+        for (int l = j - f; l <= j + f; ++l) {
+          cv::Vec3b searchPixel = paddedInput.at<cv::Vec3b>(k, l);
+
+          // 计算当前像素和搜索像素之间的欧氏距离
+          double distance = 0.0;
+          for (int m = 0; m < 3; ++m) {
+            distance += std::pow(currentPixel[m] - searchPixel[m], 2);
+          }
+
+          // 计算权重
+          double weight =
+              std::exp(-std::max(distance - 2 * sigma * sigma, 0.0) / h2);
+          resultPixel += weight * paddedInput.at<uchar>(k, l);
+          weightSum += weight;
+        }
+      }
+
+      // 计算去噪后的像素值
+      dst.at<uchar>(i - border, j - border) =
+          static_cast<uchar>(resultPixel / weightSum);
+    }
+  }
 }

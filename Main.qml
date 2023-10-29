@@ -8,40 +8,44 @@ ApplicationWindow {
     visible: true
     width: 640
     height: 480
-    title: qsTr("傅里叶变换")
-    menuBar: MenuBar {
-        Menu {
-            title: "图像变换"
-            MenuItem {
-                text: "傅里叶变换"
-                onTriggered: {
-                    stackView.replace(windowFtComponent);
-                    window.title = "傅里叶变换";
-                }
-            }
-            MenuItem {
-                text: "直方图"
-                onTriggered: {
-                    stackView.replace(windowHistogramComponent);
-                    window.title = "直方图";
-                }
-            }
+    title: qsTr("图像处理")
+    menuBar: TabBar {
+        id: bar
+        width: parent.width
+        TabButton {
+            text: qsTr("傅里叶变换")
+            width: implicitWidth
+        }
+        TabButton {
+            text: qsTr("直方图均衡化")
+            width: implicitWidth
+        }
+        TabButton {
+            text: qsTr("滤波变换")
+            width: implicitWidth
         }
     }
-    StackView {
-        id: stackView
-        initialItem: windowFtComponent
+    SwipeView {
+        id: view
         anchors.fill: parent
-    }
-    Component {
-        id: windowFtComponent
-        WindowFT {
+        currentIndex: bar.currentIndex
+        Item {
+            id: windowFT
+            WindowFT {
+                anchors.fill: parent
+            }
         }
-    }
-
-    Component {
-        id: windowHistogramComponent
-        WindowHistogram {
+        Item {
+            id: windowHistogram
+            WindowHistogram {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowFilter
+            WindowFilter {
+                anchors.fill: parent
+            }
         }
     }
 }

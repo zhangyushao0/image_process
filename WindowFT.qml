@@ -14,7 +14,6 @@ Item {
             width: 0
             color: "transparent"
         }
-
         RowLayout {
             Layout.alignment: Qt.AlignCenter
             Layout.preferredHeight: parent.width / 2.5
@@ -23,47 +22,13 @@ Item {
                 width: 0
                 color: "transparent"
             }
-            Image {
+            CustomImage {
                 id: image1
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.alignment: Qt.AlignCenter
-                Text {
-                    text: qsTr("原始图像")
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                }
-                fillMode: Image.PreserveAspectFit
-                Rectangle {
-                    color: Qt.rgba(1, 1, 1, 0.7)
-                    radius: 10
-                    border.width: 1
-                    border.color: "white"
-                    anchors.fill: parent
-                    anchors.margins: -10
-                    z: -1
-                }
+                text: "原图"
             }
-            Image {
+            CustomImage {
                 id: image2
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.alignment: Qt.AlignCenter
-                Text {
-                    text: qsTr("转换后图像")
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                }
-                fillMode: Image.PreserveAspectFit
-                Rectangle {
-                    color: Qt.rgba(1, 1, 1, 0.7)
-                    radius: 10
-                    border.width: 1
-                    border.color: "white"
-                    anchors.fill: parent
-                    anchors.margins: -10
-                    z: -1
-                }
+                text: "傅里叶变换后图像"
             }
             Rectangle {
                 width: 0
@@ -86,12 +51,24 @@ Item {
                     image2.source = "";
                 }
             }
+            Button {
+                Layout.alignment: Qt.AlignCenter
+                text: "高斯噪声"
+                onClicked: {
+                    imageController.createAllOneGrayImage(512, 512);
+                    imageController.addGaussianNoise("allOneGrayImage");
+                    image1.source = "image://imageProvider/allOneGrayImage" + "addGaussianNoise";
+                    imageController.ft("allOneGrayImage" + "addGaussianNoise");
+                    image2.source = "image://imageProvider/allOneGrayImage" + "addGaussianNoise" + "ft";
+                }
+            }
         }
     }
     FileDialog {
         id: fileDialog
         onAccepted: {
             image1.source = selectedFile;
+            imageController.loadImage(selectedFile);
             imageController.ft(selectedFile);
             console.log("success");
             image2.source = "image://imageProvider/" + selectedFile + "ft";

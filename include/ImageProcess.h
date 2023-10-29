@@ -1,7 +1,9 @@
 #ifndef IMAGEPROCESS_H
 #define IMAGEPROCESS_H
 #include <QImage>
+#include <chrono>
 #include <opencv2/opencv.hpp>
+#include <qimage.h>
 
 class ImageProcess {
 private:
@@ -16,6 +18,13 @@ public:
   // 使用CLAHE算法进行直方图均衡化
   QImage applyCLAHE(const QImage &inputImage, float clipLimit = 2.0,
                     int tileGridSize = 8);
+  QImage addGaussianNoise(const QImage &inputImage, double mean = 0,
+                          double sigma = 50);
+  QImage medianBlurFilter(const QImage &inputImage, int kernelSize = 3);
+  QImage meanBlurFilter(const QImage &inputImage, int kernelSize = 3);
+  QImage nonLocalMeanFilter(const QImage &inputImage,
+                            int templateWindowSize = 7,
+                            int searchWindowSize = 21, double h = 50.0);
 
 private:
   // 计算直方图
@@ -30,5 +39,8 @@ private:
                                    float clipLimit);
   // 将QImage转换为Mat
   void readImageToMat(const QImage &inputImage, cv::Mat &mat);
+  void myNonLocalMeansDenoising(const cv::Mat &src, cv::Mat &dst,
+                                int templateWindowSize, int searchWindowSize,
+                                double h, double sigma);
 };
 #endif // IMAGEPROCESS_H

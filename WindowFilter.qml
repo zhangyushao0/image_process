@@ -24,11 +24,15 @@ Item {
             }
             CustomImage {
                 id: image1
-                text: qsTr("原图")
+                text: "原图"
             }
             CustomImage {
                 id: image2
-                text: qsTr("直方图")
+                text: "高斯噪声"
+            }
+            CustomImage {
+                id: image3
+                text: "中值处理"
             }
             Rectangle {
                 width: 0
@@ -44,12 +48,16 @@ Item {
                 color: "transparent"
             }
             CustomImage {
-                id: image3
-                text: qsTr("直方图均衡化图像")
+                id: image4
+                text: "均值处理"
             }
             CustomImage {
-                id: image4
-                text: qsTr("CLACHE算法图像")
+                id: image5
+                text: "自适应中值处理"
+            }
+            CustomImage {
+                id: image6
+                text: "Nonlocal means处理"
             }
             Rectangle {
                 width: 0
@@ -72,6 +80,8 @@ Item {
                     image2.source = "";
                     image3.source = "";
                     image4.source = "";
+                    image5.source = "";
+                    image6.source = "";
                 }
             }
         }
@@ -81,13 +91,16 @@ Item {
         onAccepted: {
             image1.source = selectedFile;
             imageController.loadImage(selectedFile);
-            imageController.displayHistogram(selectedFile);
-            imageController.histogramEqualization(selectedFile);
-            imageController.applyCLAHE(selectedFile);
-            console.log("success");
-            image2.source = "image://imageProvider/" + selectedFile + "displayHistogram";
-            image3.source = "image://imageProvider/" + selectedFile + "histogramEqualization";
-            image4.source = "image://imageProvider/" + selectedFile + "applyCLAHE";
+            imageController.addGaussianNoise(selectedFile);
+            image2.source = "image://imageProvider/" + selectedFile + "addGaussianNoise";
+            imageController.medianBlurFilter(selectedFile + "addGaussianNoise");
+            image3.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "medianBlurFilter";
+            imageController.meanBlurFilter(selectedFile + "addGaussianNoise");
+            image4.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "meanBlurFilter";
+            // imageController.adaptiveMedianFilter(selectedFile + "addGaussianNoise");
+            // image5.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "adaptiveMedianFilter";
+            imageController.nonLocalMeanFilter(selectedFile + "addGaussianNoise");
+            image6.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "nonLocalMeanFilter";
         }
     }
 }
