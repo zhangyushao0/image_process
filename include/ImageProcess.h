@@ -20,11 +20,14 @@ public:
                     int tileGridSize = 8);
   QImage addGaussianNoise(const QImage &inputImage, double mean = 0,
                           double sigma = 50);
+  QImage addSaltAndPepperNoise(const QImage &inputImage, double pa = 0.01,
+                               double pb = 0.01);
   QImage medianBlurFilter(const QImage &inputImage, int kernelSize = 3);
   QImage meanBlurFilter(const QImage &inputImage, int kernelSize = 3);
+  QImage adaptiveMedianFilter(const QImage &inputImage, int maxWindowSize = 7);
   QImage nonLocalMeanFilter(const QImage &inputImage,
                             int templateWindowSize = 7,
-                            int searchWindowSize = 21, double h = 50.0);
+                            int searchWindowSize = 14, double h = 15.0);
 
 private:
   // 计算直方图
@@ -42,5 +45,7 @@ private:
   void myNonLocalMeansDenoising(const cv::Mat &src, cv::Mat &dst,
                                 int templateWindowSize, int searchWindowSize,
                                 double h, double sigma);
+  void myAdaptiveMedian(const cv::Mat &input, cv::Mat &dst, int maxWindowSize);
+  double getMedian(cv::Mat &window);
 };
 #endif // IMAGEPROCESS_H

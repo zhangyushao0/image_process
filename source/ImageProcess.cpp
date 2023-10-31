@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/photo.hpp>
 #include <qimage.h>
 #include <qsize.h>
 
@@ -288,13 +289,32 @@ QImage ImageProcess::addGaussianNoise(const QImage &inputImage, double mean,
           .copy();
   return result;
 }
+QImage ImageProcess::addSaltAndPepperNoise(const QImage &inputImage, double pa,
+                                           double pb) {
+  // 将QImage转换为灰度图 CV_8UC1
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  // 添加椒盐噪声
+  cv::Mat noise = cv::Mat(mat.size(), CV_8UC1);
+  cv::randu(noise, 0, 255);
+  cv::Mat salt = noise > 255 * (1 - pa);
+  cv::Mat pepper = noise < 255 * pb;
+  mat.setTo(255, salt);
+
+  //  转换为QImage
+  QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
 QImage ImageProcess::medianBlurFilter(const QImage &inputImage,
                                       int kernelSize) {
   cv::Mat mat;
   readImageToMat(inputImage, mat);
 
   cv::Mat dst;
-  int kernel_size = 3; // 或者其他您想要使用的核大小
+  int kernel_size = 3;
   cv::medianBlur(mat, dst, kernel_size);
 
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
@@ -307,12 +327,32 @@ QImage ImageProcess::meanBlurFilter(const QImage &inputImage, int kernelSize) {
   readImageToMat(inputImage, mat);
 
   cv::Mat dst;
-  cv::Size ksize(3, 3); // 核大小，可以根据需要调整
+  cv::Size ksize(3, 3);
   cv::blur(mat, dst, ksize);
 
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
                       .copy();
+  return result;
+}
+QImage ImageProcess::adaptiveMedianFilter(const QImage &inputImage,
+                                          int maxWindowSize)
+
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  myAdaptiveMedian(mat, dst, maxWindowSize);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  qDebug() << "adaptiveMedianFilter:" << duration.count() << "ms";
   return result;
 }
 QImage ImageProcess::nonLocalMeanFilter(const QImage &inputImage,
@@ -323,8 +363,9 @@ QImage ImageProcess::nonLocalMeanFilter(const QImage &inputImage,
   readImageToMat(inputImage, mat);
 
   cv::Mat dst;
-  myNonLocalMeansDenoising(mat, dst, templateWindowSize, searchWindowSize, h,
-                           50.0);
+  // myNonLocalMeansDenoising(mat, dst, templateWindowSize, searchWindowSize, h,
+  //                          5);
+  cv::fastNlMeansDenoising(mat, dst, h, templateWindowSize, searchWindowSize);
 
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
@@ -340,43 +381,105 @@ void ImageProcess::myNonLocalMeansDenoising(const cv::Mat &input, cv::Mat &dst,
                                             int searchWindowSize, double h,
                                             double sigma) {
   dst = input.clone();
-  int border = templateWindowSize / 2;
+  int border = templateWindowSize / 2; // 计算边界宽度
   int f = searchWindowSize / 2;
-  double h2 = h * h;
+  double h2 = h * h; // h的平方
 
-  // 为输入图像创建边界
+  // 对输入图像进行边界扩展
   cv::Mat paddedInput;
   cv::copyMakeBorder(input, paddedInput, border, border, border, border,
                      cv::BORDER_REFLECT);
 
+  // 遍历扩展后的图像的每个像素
   for (int i = border; i < paddedInput.rows - border; ++i) {
     for (int j = border; j < paddedInput.cols - border; ++j) {
       double weightSum = 0.0;
       double resultPixel = 0.0;
-      cv::Vec3b currentPixel = paddedInput.at<cv::Vec3b>(i, j);
+      uchar currentPixel = paddedInput.at<uchar>(i, j);
 
-      // 在搜索窗口内查找相似的像素
-      for (int k = i - f; k <= i + f; ++k) {
-        for (int l = j - f; l <= j + f; ++l) {
-          cv::Vec3b searchPixel = paddedInput.at<cv::Vec3b>(k, l);
+      // 在搜索窗口内寻找与当前像素相似的像素
+      for (int k = std::max(i - f, border);
+           k <= std::min(i + f, paddedInput.rows - border - 1); ++k) {
+        for (int l = std::max(j - f, border);
+             l <= std::min(j + f, paddedInput.cols - border - 1); ++l) {
+          uchar searchPixel = paddedInput.at<uchar>(k, l);
 
-          // 计算当前像素和搜索像素之间的欧氏距离
-          double distance = 0.0;
-          for (int m = 0; m < 3; ++m) {
-            distance += std::pow(currentPixel[m] - searchPixel[m], 2);
-          }
+          // 计算当前像素与搜索像素之间的欧几里得距离
+          double distance = std::pow(static_cast<double>(currentPixel) -
+                                         static_cast<double>(searchPixel),
+                                     2);
 
-          // 计算权重
+          // 根据距离计算权重
           double weight =
               std::exp(-std::max(distance - 2 * sigma * sigma, 0.0) / h2);
-          resultPixel += weight * paddedInput.at<uchar>(k, l);
+          resultPixel += weight * static_cast<double>(searchPixel);
           weightSum += weight;
         }
       }
 
-      // 计算去噪后的像素值
+      // 根据权重计算去噪后的像素值
       dst.at<uchar>(i - border, j - border) =
           static_cast<uchar>(resultPixel / weightSum);
     }
   }
+}
+
+void ImageProcess::myAdaptiveMedian(const cv::Mat &input, cv::Mat &dst,
+                                    int maxWindowSize) {
+  dst = input.clone();
+  int border = maxWindowSize / 2; // 计算边界宽度
+
+  // 对图像进行扩展，使用反射边界进行填充
+  cv::Mat paddedInput;
+  cv::copyMakeBorder(input, paddedInput, border, border, border, border,
+                     cv::BORDER_REFLECT);
+
+  // 对扩展后的图像进行遍历
+  for (int i = border; i < paddedInput.rows - border; ++i) {
+    for (int j = border; j < paddedInput.cols - border; ++j) {
+      int windowSize = 3; // 初始化窗口大小为3
+      bool isModified = false;
+
+      // 不断增大窗口，直到达到最大窗口大小或满足中值条件
+      while (windowSize <= maxWindowSize && !isModified) {
+        int halfSize = windowSize / 2;
+        cv::Mat window =
+            paddedInput(cv::Rect(j - halfSize, i - halfSize, windowSize,
+                                 windowSize)); // 提取当前窗口
+
+        double minVal, maxVal, medianVal;
+        cv::minMaxLoc(window, &minVal, &maxVal); // 计算窗口内的最小、最大值
+        medianVal = getMedian(window);           // 计算窗口内的中值
+
+        uchar currentPixel = paddedInput.at<uchar>(i, j); // 获取当前像素值
+
+        // 判断中值是否位于最小值和最大值之间
+        if (minVal < medianVal && medianVal < maxVal) {
+          // 判断当前像素是否位于最小值和最大值之间
+          if (minVal < currentPixel && currentPixel < maxVal) {
+            dst.at<uchar>(i - border, j - border) =
+                currentPixel; // 使用原像素值
+          } else {
+            dst.at<uchar>(i - border, j - border) =
+                static_cast<uchar>(medianVal); // 使用中值
+          }
+          isModified = true; // 标记已进行修改
+        } else {
+          windowSize += 2; // 增大窗口大小
+        }
+      }
+
+      // 如果没有进行修改，则使用原像素值
+      if (!isModified) {
+        dst.at<uchar>(i - border, j - border) = paddedInput.at<uchar>(i, j);
+      }
+    }
+  }
+}
+
+double ImageProcess::getMedian(cv::Mat &window) {
+  int n = window.rows * window.cols / 2;
+  std::vector<uchar> vec(window.begin<uchar>(), window.end<uchar>());
+  std::nth_element(vec.begin(), vec.begin() + n, vec.end());
+  return vec[n];
 }

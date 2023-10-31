@@ -28,7 +28,7 @@ Item {
             }
             CustomImage {
                 id: image2
-                text: "高斯噪声"
+                text: "噪声"
             }
             CustomImage {
                 id: image3
@@ -69,8 +69,13 @@ Item {
             spacing: 10
             Button {
                 Layout.alignment: Qt.AlignCenter
-                text: "打开图片并转换"
+                text: "添加高斯噪声"
                 onClicked: fileDialog.open()
+            }
+            Button {
+                Layout.alignment: Qt.AlignCenter
+                text: "添加椒盐噪声"
+                onClicked: fileDialog2.open()
             }
             Button {
                 Layout.alignment: Qt.AlignCenter
@@ -93,14 +98,33 @@ Item {
             imageController.loadImage(selectedFile);
             imageController.addGaussianNoise(selectedFile);
             image2.source = "image://imageProvider/" + selectedFile + "addGaussianNoise";
-            imageController.medianBlurFilter(selectedFile + "addGaussianNoise");
-            image3.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "medianBlurFilter";
-            imageController.meanBlurFilter(selectedFile + "addGaussianNoise");
-            image4.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "meanBlurFilter";
-            // imageController.adaptiveMedianFilter(selectedFile + "addGaussianNoise");
-            // image5.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "adaptiveMedianFilter";
-            imageController.nonLocalMeanFilter(selectedFile + "addGaussianNoise");
-            image6.source = "image://imageProvider/" + selectedFile + "addGaussianNoise" + "nonLocalMeanFilter";
+            let readyImageURL = selectedFile + "addGaussianNoise";
+            imageController.medianBlurFilter(readyImageURL);
+            image3.source = "image://imageProvider/" + readyImageURL + "medianBlurFilter";
+            imageController.meanBlurFilter(readyImageURL);
+            image4.source = "image://imageProvider/" + readyImageURL + "meanBlurFilter";
+            imageController.adaptiveMedianFilter(readyImageURL);
+            image5.source = "image://imageProvider/" + readyImageURL + "adaptiveMedianFilter";
+            imageController.nonLocalMeanFilter(readyImageURL);
+            image6.source = "image://imageProvider/" + readyImageURL + "nonLocalMeanFilter";
+        }
+    }
+    FileDialog {
+        id: fileDialog2
+        onAccepted: {
+            image1.source = selectedFile;
+            imageController.loadImage(selectedFile);
+            imageController.addSaltAndPepperNoise(selectedFile);
+            image2.source = "image://imageProvider/" + selectedFile + "addSaltAndPepperNoise";
+            let readyImageURL = selectedFile + "addSaltAndPepperNoise";
+            imageController.medianBlurFilter(readyImageURL);
+            image3.source = "image://imageProvider/" + readyImageURL + "medianBlurFilter";
+            imageController.meanBlurFilter(readyImageURL);
+            image4.source = "image://imageProvider/" + readyImageURL + "meanBlurFilter";
+            imageController.adaptiveMedianFilter(readyImageURL);
+            image5.source = "image://imageProvider/" + readyImageURL + "adaptiveMedianFilter";
+            imageController.nonLocalMeanFilter(readyImageURL);
+            image6.source = "image://imageProvider/" + readyImageURL + "nonLocalMeanFilter";
         }
     }
 }

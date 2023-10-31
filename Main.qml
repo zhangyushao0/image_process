@@ -12,6 +12,7 @@ ApplicationWindow {
     menuBar: TabBar {
         id: bar
         width: parent.width
+        currentIndex: view.currentIndex
         TabButton {
             text: qsTr("傅里叶变换")
             width: implicitWidth

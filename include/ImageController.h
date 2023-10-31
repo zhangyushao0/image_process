@@ -64,6 +64,12 @@ public:
     imageProvider.setImage(imageProcess.addGaussianNoise(image),
                            url.toString() + "addGaussianNoise");
   }
+  Q_INVOKABLE void addSaltAndPepperNoise(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.addSaltAndPepperNoise(image),
+                           url.toString() + "addSaltAndPepperNoise");
+  }
   Q_INVOKABLE void medianBlurFilter(const QUrl &url) {
     QSize size;
     QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
@@ -75,6 +81,12 @@ public:
     QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
     imageProvider.setImage(imageProcess.meanBlurFilter(image),
                            url.toString() + "meanBlurFilter");
+  }
+  Q_INVOKABLE void adaptiveMedianFilter(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.adaptiveMedianFilter(image),
+                           url.toString() + "adaptiveMedianFilter");
   }
   Q_INVOKABLE void nonLocalMeanFilter(const QUrl &url) {
     QSize size;
