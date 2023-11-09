@@ -94,5 +94,18 @@ public:
     imageProvider.setImage(imageProcess.nonLocalMeanFilter(image),
                            url.toString() + "nonLocalMeanFilter");
   }
+  Q_INVOKABLE void enhanceImageUsingSecondDerivative(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(
+        imageProcess.enhanceImageUsingSecondDerivative(image),
+        url.toString() + "enhanceImageUsingSecondDerivative");
+  }
+  Q_INVOKABLE void unsharpMask(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.unsharpMask(image),
+                           url.toString() + "unsharpMask");
+  }
 };
 #endif // IMAGECONTROLLER_H

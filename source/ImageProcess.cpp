@@ -483,3 +483,65 @@ double ImageProcess::getMedian(cv::Mat &window) {
   std::nth_element(vec.begin(), vec.begin() + n, vec.end());
   return vec[n];
 }
+
+QImage
+ImageProcess::enhanceImageUsingSecondDerivative(const QImage &inputImage) {
+  // 将QImage转换为灰度图 CV_8UC1
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  // 定义拉普拉斯算子核
+  cv::Mat kernel = (cv::Mat_<float>(3, 3) << 1, 1, 1, 1, -8, 1, 1, 1, 1);
+
+  // 应用卷积操作
+  cv::Mat laplacian;
+  cv::filter2D(mat, laplacian, CV_16S, kernel);
+
+  mat.convertTo(mat, CV_16S);
+  cv::Mat sharpened = mat - laplacian;
+
+  // 确保值在0-255之间
+  sharpened.convertTo(sharpened, CV_8UC1, 1, 0);
+  // 将增强后的图像转换为QImage
+  QImage result =
+      QImage((uchar *)sharpened.data, sharpened.cols, sharpened.rows,
+             sharpened.step, QImage::Format_Grayscale8)
+          .copy();
+  return result;
+}
+
+QImage ImageProcess::unsharpMask(const QImage &inputImage, int kernelSize,
+                                 double sigma, double k) {
+  // 确保kernelSize是正数和奇数
+  if (kernelSize % 2 == 0) {
+    kernelSize += 1;
+  }
+
+  // 将QImage转换为灰度图 CV_8UC1
+  cv::Mat originalMat;
+  readImageToMat(inputImage, originalMat);
+
+  // 创建高斯模糊图像
+  cv::Mat blurredMat;
+  cv::GaussianBlur(originalMat, blurredMat, cv::Size(kernelSize, kernelSize),
+                   sigma);
+
+  // 计算掩膜：原图像 - 模糊图像
+  cv::Mat maskMat = originalMat - blurredMat;
+
+  // 应用非锐化掩蔽：原图像 + k * 掩膜
+  cv::Mat sharpMat;
+  originalMat.convertTo(sharpMat, CV_16S); // 转换为16位有符号，以避免溢出
+  maskMat.convertTo(maskMat, CV_16S);
+  cv::addWeighted(sharpMat, 1.0, maskMat, k, 0, sharpMat);
+
+  // 转换回8位图像
+  sharpMat.convertTo(sharpMat, CV_8UC1);
+
+  // 将cv::Mat转换回QImage
+  QImage resultImage = QImage(sharpMat.data, sharpMat.cols, sharpMat.rows,
+                              sharpMat.step, QImage::Format_Grayscale8)
+                           .copy();
+
+  return resultImage;
+}

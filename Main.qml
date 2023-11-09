@@ -25,6 +25,10 @@ ApplicationWindow {
             text: qsTr("滤波变换")
             width: implicitWidth
         }
+        TabButton {
+            text: qsTr("图像增强")
+            width: implicitWidth
+        }
     }
     SwipeView {
         id: view
@@ -45,6 +49,12 @@ ApplicationWindow {
         Item {
             id: windowFilter
             WindowFilter {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowEnhance
+            WindowEnhance {
                 anchors.fill: parent
             }
         }

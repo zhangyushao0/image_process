@@ -28,6 +28,9 @@ public:
   QImage nonLocalMeanFilter(const QImage &inputImage,
                             int templateWindowSize = 7,
                             int searchWindowSize = 14, double h = 15.0);
+  QImage enhanceImageUsingSecondDerivative(const QImage &inputImage);
+  QImage unsharpMask(const QImage &inputImage, int kernelSize = 3,
+                     double sigma = 1.0, double k = 10.0);
 
 private:
   // 计算直方图
