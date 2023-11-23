@@ -29,6 +29,10 @@ ApplicationWindow {
             text: qsTr("图像增强")
             width: implicitWidth
         }
+        TabButton {
+            text: qsTr("图像压缩")
+            width: implicitWidth
+        }
     }
     SwipeView {
         id: view
@@ -55,6 +59,12 @@ ApplicationWindow {
         Item {
             id: windowEnhance
             WindowEnhance {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowCompress
+            WindowCompress {
                 anchors.fill: parent
             }
         }

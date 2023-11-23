@@ -107,5 +107,17 @@ public:
     imageProvider.setImage(imageProcess.unsharpMask(image),
                            url.toString() + "unsharpMask");
   }
+  Q_INVOKABLE void compressImageJPEG(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.compressImageJPEG(image),
+                           url.toString() + "compressImageJPEG");
+  }
+  Q_INVOKABLE void compressImageJPEG2000(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.compressImageJPEG2000(image),
+                           url.toString() + "compressImageJPEG2000");
+  }
 };
 #endif // IMAGECONTROLLER_H

@@ -30,12 +30,15 @@ qt_add_qml_module(appimage_process
     QML_FILES WindowHistogram.qml
     QML_FILES WindowFilter.qml
     QML_FILES WindowEnhance.qml
+    QML_FILES WindowCompress.qml
     QML_FILES CustomImage.qml
 )
-#add console to the target
+
+# add console to the target
 if(WIN32)
     target_link_options(appimage_process PRIVATE "/SUBSYSTEM:CONSOLE")
 endif()
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.

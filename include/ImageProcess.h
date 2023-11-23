@@ -30,6 +30,8 @@ public:
   QImage enhanceImageUsingSecondDerivative(const QImage &inputImage);
   QImage unsharpMask(const QImage &inputImage, int kernelSize = 3,
                      double sigma = 1.0, double k = 10.0);
+  QImage compressImageJPEG(const QImage &inputImage, int ratio = 10);
+  QImage compressImageJPEG2000(const QImage &inputImage, int ratio = 10);
 
 private:
   // 计算直方图

@@ -562,3 +562,51 @@ QImage ImageProcess::unsharpMask(const QImage &inputImage, int kernelSize,
 
   return resultImage;
 }
+
+QImage ImageProcess::compressImageJPEG(const QImage &inputImage, int ratio) {
+  // 将QImage转换为 cv::Mat
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  // 将图像转换为JPEG格式
+  std::vector<uchar> buffer;
+  std::vector<int> params;
+  params.push_back(cv::IMWRITE_JPEG_QUALITY);
+  params.push_back(ratio);
+  cv::imencode(".jpg", mat, buffer, params);
+
+  // 将压缩后的图像转换为QImage
+  QImage result = QImage::fromData(buffer.data(), buffer.size());
+  return result;
+}
+QImage convertJPEG2000ToQImage(const std::vector<uchar> &jpeg2000Data) {
+  // 使用OpenCV解码JPEG2000数据
+  cv::Mat decodedImage = cv::imdecode(jpeg2000Data, cv::IMREAD_UNCHANGED);
+
+  // 将解码后的图像编码为BMP格式
+  std::vector<uchar> bmpData;
+  cv::imencode(".bmp", decodedImage, bmpData);
+
+  // 使用BMP数据创建QImage
+  QImage result =
+      QImage::fromData(bmpData.data(), static_cast<int>(bmpData.size()));
+  return result;
+}
+
+QImage ImageProcess::compressImageJPEG2000(const QImage &inputImage,
+                                           int ratio) {
+  // 将QImage转换为 cv::Mat
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+  ratio *= 10;
+  // 将图像转换为JPEG2000格式
+  std::vector<uchar> buffer;
+  std::vector<int> params;
+  params.push_back(cv::IMWRITE_JPEG2000_COMPRESSION_X1000);
+  params.push_back(ratio);
+  cv::imencode(".jp2", mat, buffer, params);
+
+  // 将JPEG2000数据转换为QImage
+  QImage result = convertJPEG2000ToQImage(buffer);
+  return result;
+}
