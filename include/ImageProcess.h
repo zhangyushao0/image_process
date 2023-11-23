@@ -1,7 +1,6 @@
 #ifndef IMAGEPROCESS_H
 #define IMAGEPROCESS_H
 #include <QImage>
-#include <chrono>
 #include <opencv2/opencv.hpp>
 #include <qimage.h>
 
@@ -19,15 +18,15 @@ public:
   QImage applyCLAHE(const QImage &inputImage, float clipLimit = 2.0,
                     int tileGridSize = 8);
   QImage addGaussianNoise(const QImage &inputImage, double mean = 0,
-                          double sigma = 50);
-  QImage addSaltAndPepperNoise(const QImage &inputImage, double pa = 0.01,
-                               double pb = 0.01);
+                          double sigma = 25);
+  QImage addSaltAndPepperNoise(const QImage &inputImage, double pa = 0.1,
+                               double pb = 0.1);
   QImage medianBlurFilter(const QImage &inputImage, int kernelSize = 3);
   QImage meanBlurFilter(const QImage &inputImage, int kernelSize = 3);
   QImage adaptiveMedianFilter(const QImage &inputImage, int maxWindowSize = 7);
   QImage nonLocalMeanFilter(const QImage &inputImage,
                             int templateWindowSize = 7,
-                            int searchWindowSize = 14, double h = 15.0);
+                            int searchWindowSize = 14, double h = 25.0);
   QImage enhanceImageUsingSecondDerivative(const QImage &inputImage);
   QImage unsharpMask(const QImage &inputImage, int kernelSize = 3,
                      double sigma = 1.0, double k = 10.0);

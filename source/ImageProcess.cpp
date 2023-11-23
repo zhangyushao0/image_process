@@ -301,7 +301,7 @@ QImage ImageProcess::addSaltAndPepperNoise(const QImage &inputImage, double pa,
   cv::Mat salt = noise > 255 * (1 - pa);
   cv::Mat pepper = noise < 255 * pb;
   mat.setTo(255, salt);
-
+  mat.setTo(0, pepper);
   //  转换为QImage
   QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
                          QImage::Format_Grayscale8)
@@ -380,46 +380,63 @@ void ImageProcess::myNonLocalMeansDenoising(const cv::Mat &input, cv::Mat &dst,
                                             int templateWindowSize,
                                             int searchWindowSize, double h,
                                             double sigma) {
-  dst = input.clone();
-  int border = templateWindowSize / 2; // 计算边界宽度
-  int f = searchWindowSize / 2;
-  double h2 = h * h; // h的平方
+  // 确保输入图像是灰度图
+  cv::Mat gray;
+  if (input.channels() == 3) {
+    cv::cvtColor(input, gray, cv::COLOR_BGR2GRAY);
+  } else {
+    gray = input;
+  }
 
-  // 对输入图像进行边界扩展
-  cv::Mat paddedInput;
-  cv::copyMakeBorder(input, paddedInput, border, border, border, border,
-                     cv::BORDER_REFLECT);
+  // 初始化目标图像
+  dst = cv::Mat::zeros(gray.size(), gray.type());
 
-  // 遍历扩展后的图像的每个像素
-  for (int i = border; i < paddedInput.rows - border; ++i) {
-    for (int j = border; j < paddedInput.cols - border; ++j) {
-      double weightSum = 0.0;
-      double resultPixel = 0.0;
-      uchar currentPixel = paddedInput.at<uchar>(i, j);
+  // 计算用于去噪的h的平方
+  double h2 = h * h;
 
-      // 在搜索窗口内寻找与当前像素相似的像素
-      for (int k = std::max(i - f, border);
-           k <= std::min(i + f, paddedInput.rows - border - 1); ++k) {
-        for (int l = std::max(j - f, border);
-             l <= std::min(j + f, paddedInput.cols - border - 1); ++l) {
-          uchar searchPixel = paddedInput.at<uchar>(k, l);
+  // 遍历图像中的每个像素
+  for (int i = 0; i < gray.rows; i++) {
+    for (int j = 0; j < gray.cols; j++) {
+      double weight_sum = 0.0;
+      double pixel_value_sum = 0.0;
 
-          // 计算当前像素与搜索像素之间的欧几里得距离
-          double distance = std::pow(static_cast<double>(currentPixel) -
-                                         static_cast<double>(searchPixel),
-                                     2);
+      // 遍历搜索窗口中的每个像素
+      for (int k = -searchWindowSize / 2; k <= searchWindowSize / 2; k++) {
+        for (int l = -searchWindowSize / 2; l <= searchWindowSize / 2; l++) {
+          int x = i + l;
+          int y = j + k;
 
-          // 根据距离计算权重
-          double weight =
-              std::exp(-std::max(distance - 2 * sigma * sigma, 0.0) / h2);
-          resultPixel += weight * static_cast<double>(searchPixel);
-          weightSum += weight;
+          // 检查索引是否在图像边界内
+          if (x >= 0 && x < gray.cols && y >= 0 && y < gray.rows) {
+            double template_diff = 0.0;
+
+            // 计算模板窗口内的加权欧氏距离
+            for (int a = -templateWindowSize / 2; a <= templateWindowSize / 2;
+                 a++) {
+              for (int b = -templateWindowSize / 2; b <= templateWindowSize / 2;
+                   b++) {
+                int xa = x + a;
+                int ya = y + b;
+
+                // 检查模板索引是否在图像边界内
+                if (xa >= 0 && xa < gray.rows && ya >= 0 && ya < gray.cols) {
+                  double diff = gray.at<uchar>(x, y) - gray.at<uchar>(xa, ya);
+                  template_diff += diff * diff;
+                  // 计算权重
+                  double weight = exp(-template_diff / h2);
+
+                  // 累加权重和像素值
+                  weight_sum += weight;
+                  pixel_value_sum += weight * gray.at<uchar>(xa, ya);
+                }
+              }
+            }
+          }
         }
       }
 
-      // 根据权重计算去噪后的像素值
-      dst.at<uchar>(i - border, j - border) =
-          static_cast<uchar>(resultPixel / weightSum);
+      // 计算去噪后的像素值
+      dst.at<uchar>(i, j) = cvRound(pixel_value_sum / weight_sum);
     }
   }
 }
