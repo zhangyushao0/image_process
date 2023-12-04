@@ -26,12 +26,14 @@ qt_add_qml_module(appimage_process
     URI image_process
     VERSION 1.0
     QML_FILES Main.qml
+    QML_FILES CustomImage.qml
     QML_FILES WindowFT.qml
     QML_FILES WindowHistogram.qml
     QML_FILES WindowFilter.qml
     QML_FILES WindowEnhance.qml
     QML_FILES WindowCompress.qml
-    QML_FILES CustomImage.qml
+    QML_FILES WindowMorphology.qml
+    QML_FILES WindowThreshold.qml
 )
 
 # add console to the target

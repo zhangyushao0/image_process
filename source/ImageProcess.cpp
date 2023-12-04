@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/photo.hpp>
 #include <qimage.h>
 #include <qsize.h>
@@ -608,5 +609,86 @@ QImage ImageProcess::compressImageJPEG2000(const QImage &inputImage,
 
   // 将JPEG2000数据转换为QImage
   QImage result = convertJPEG2000ToQImage(buffer);
+  return result;
+}
+
+QImage ImageProcess::erode(const QImage &inputImage, int kernelSize) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS,
+                                              cv::Size(kernelSize, kernelSize));
+  cv::erode(mat, dst, element);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+QImage ImageProcess::dilate(const QImage &inputImage, int kernelSize) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS,
+                                              cv::Size(kernelSize, kernelSize));
+  cv::dilate(mat, dst, element);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::removeSmallComponents(const QImage &inputImage,
+                                           int threshold) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::Mat labelImage, stats, centroids;
+  int nLabels = cv::connectedComponentsWithStats(mat, labelImage, stats,
+                                                 centroids, 8, CV_32S);
+  for (int i = 0; i < nLabels; i++) {
+    if (stats.at<int>(i, cv::CC_STAT_AREA) < threshold) {
+      for (int r = 0; r < mat.rows; r++) {
+        for (int c = 0; c < mat.cols; c++) {
+          if (labelImage.at<int>(r, c) == i) {
+            mat.at<uchar>(r, c) = 0;
+          }
+        }
+      }
+    }
+  }
+
+  QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::globalThreshold(const QImage &inputImage, int threshold) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::threshold(mat, dst, threshold, 255, cv::THRESH_BINARY);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+QImage ImageProcess::otsuThreshold(const QImage &inputImage) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::threshold(mat, dst, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
   return result;
 }

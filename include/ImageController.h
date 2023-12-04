@@ -119,5 +119,48 @@ public:
     imageProvider.setImage(imageProcess.compressImageJPEG2000(image),
                            url.toString() + "compressImageJPEG2000");
   }
+  Q_INVOKABLE void erode(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.erode(image), url.toString() + "erode");
+  }
+  Q_INVOKABLE void dilate(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.dilate(image),
+                           url.toString() + "dilate");
+  }
+  Q_INVOKABLE void opening(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    image = imageProcess.erode(image);
+    imageProvider.setImage(imageProcess.dilate(image),
+                           url.toString() + "opening");
+  }
+  Q_INVOKABLE void closing(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    image = imageProcess.dilate(image);
+    imageProvider.setImage(imageProcess.erode(image),
+                           url.toString() + "closing");
+  }
+  Q_INVOKABLE void removeSmallComponents(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.removeSmallComponents(image),
+                           url.toString() + "removeSmallComponents");
+  }
+  Q_INVOKABLE void globalThreshold(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.globalThreshold(image),
+                           url.toString() + "globalThreshold");
+  }
+  Q_INVOKABLE void otsuThreshold(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.otsuThreshold(image),
+                           url.toString() + "otsuThreshold");
+  }
 };
 #endif // IMAGECONTROLLER_H

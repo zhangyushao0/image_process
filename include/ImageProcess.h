@@ -32,6 +32,11 @@ public:
                      double sigma = 1.0, double k = 10.0);
   QImage compressImageJPEG(const QImage &inputImage, int ratio = 10);
   QImage compressImageJPEG2000(const QImage &inputImage, int ratio = 10);
+  QImage erode(const QImage &inputImage, int kernelSize = 3);
+  QImage dilate(const QImage &inputImage, int kernelSize = 3);
+  QImage removeSmallComponents(const QImage &inputImage, int threshold = 100);
+  QImage globalThreshold(const QImage &inputImage, int threshold = 100);
+  QImage otsuThreshold(const QImage &inputImage);
 
 private:
   // 计算直方图

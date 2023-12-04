@@ -33,6 +33,14 @@ ApplicationWindow {
             text: qsTr("图像压缩")
             width: implicitWidth
         }
+        TabButton {
+            text: qsTr("形态学处理")
+            width: implicitWidth
+        }
+        TabButton {
+            text: qsTr("图像分割")
+            width: implicitWidth
+        }
     }
     SwipeView {
         id: view
@@ -65,6 +73,18 @@ ApplicationWindow {
         Item {
             id: windowCompress
             WindowCompress {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowMorphology
+            WindowMorphology {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowThreshold
+            WindowThreshold {
                 anchors.fill: parent
             }
         }
