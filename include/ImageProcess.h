@@ -34,7 +34,7 @@ public:
   QImage compressImageJPEG2000(const QImage &inputImage, int ratio = 10);
   QImage erode(const QImage &inputImage, int kernelSize = 3);
   QImage dilate(const QImage &inputImage, int kernelSize = 3);
-  QImage removeSmallComponents(const QImage &inputImage, int threshold = 100);
+  QImage removeSmallComponents(const QImage &inputImage, int threshold = 8);
   QImage globalThreshold(const QImage &inputImage, int threshold = 100);
   QImage otsuThreshold(const QImage &inputImage);
 
@@ -56,5 +56,9 @@ private:
                                 double h, double sigma);
   void myAdaptiveMedian(const cv::Mat &input, cv::Mat &dst, int maxWindowSize);
   double getMedian(cv::Mat &window);
+  int myDetectConnectedComponents(const cv::Mat &input, cv::Mat &labels,
+                                  std::map<int, int> &map);
+  void myDFS(const cv::Mat &input, cv::Mat &labels, int r, int c, int &num,
+             int label);
 };
 #endif // IMAGEPROCESS_H

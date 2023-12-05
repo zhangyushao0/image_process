@@ -647,11 +647,11 @@ QImage ImageProcess::removeSmallComponents(const QImage &inputImage,
   readImageToMat(inputImage, mat);
 
   cv::Mat dst;
-  cv::Mat labelImage, stats, centroids;
-  int nLabels = cv::connectedComponentsWithStats(mat, labelImage, stats,
-                                                 centroids, 8, CV_32S);
-  for (int i = 0; i < nLabels; i++) {
-    if (stats.at<int>(i, cv::CC_STAT_AREA) < threshold) {
+  cv::Mat labelImage;
+  std::map<int, int> map;
+  int nLabels = myDetectConnectedComponents(mat, labelImage, map);
+  for (int i = 1; i < nLabels + 1; i++) {
+    if (map[i] < threshold) {
       for (int r = 0; r < mat.rows; r++) {
         for (int c = 0; c < mat.cols; c++) {
           if (labelImage.at<int>(r, c) == i) {
@@ -661,13 +661,71 @@ QImage ImageProcess::removeSmallComponents(const QImage &inputImage,
       }
     }
   }
-
   QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
                          QImage::Format_Grayscale8)
                       .copy();
   return result;
+  if
 }
 
+int ImageProcess::myDetectConnectedComponents(const cv::Mat &input,
+                                              cv::Mat &labels,
+                                              std::map<int, int> &map) {
+  cv::Mat mat = input.clone();
+
+  labels = cv::Mat::zeros(mat.size(), CV_32S);
+  int label = 1;
+
+  // 遍历图像中的每个像素
+  for (int r = 0; r < mat.rows; r++) {
+    for (int c = 0; c < mat.cols; c++) {
+      if (mat.at<uchar>(r, c) == 0) {
+        continue;
+      }
+      // 如果当前像素没有被标记
+      if (labels.at<int>(r, c) == 0) {
+        // 使用深度优先搜索标记相邻的像素
+        int num = 0;
+        myDFS(mat, labels, r, c, num, label);
+        label++;
+        map.insert(std::pair<int, int>(label, num));
+      }
+    }
+  }
+  return label - 1;
+}
+void ImageProcess::myDFS(const cv::Mat &input, cv::Mat &labels, int r, int c,
+                         int &num, int label) {
+  // 检查索引是否在图像边界内
+  if (r < 0 || r >= input.rows || c < 0 || c >= input.cols) {
+    return;
+  }
+
+  // 检查像素是否已经被标记
+  if (labels.at<int>(r, c) != 0) {
+    return;
+  }
+
+  // 检查像素值是否为0
+  if (input.at<uchar>(r, c) == 0) {
+    return;
+  }
+
+  // 标记当前像素
+  labels.at<int>(r, c) = label;
+  num++;
+
+  // 递归标记相邻的像素
+  myDFS(input, labels, r - 1, c, num, label);
+  myDFS(input, labels, r + 1, c, num, label);
+  myDFS(input, labels, r, c - 1, num, label);
+  myDFS(input, labels, r, c + 1, num, label);
+
+  myDFS(input, labels, r - 1, c - 1, num, label);
+  myDFS(input, labels, r - 1, c + 1, num, label);
+  myDFS(input, labels, r + 1, c - 1, num, label);
+  myDFS(input, labels, r + 1, c + 1, num, label);
+}
 QImage ImageProcess::globalThreshold(const QImage &inputImage, int threshold) {
   cv::Mat mat;
   readImageToMat(inputImage, mat);
