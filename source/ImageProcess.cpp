@@ -665,7 +665,6 @@ QImage ImageProcess::removeSmallComponents(const QImage &inputImage,
                          QImage::Format_Grayscale8)
                       .copy();
   return result;
-  if
 }
 
 int ImageProcess::myDetectConnectedComponents(const cv::Mat &input,
@@ -675,7 +674,6 @@ int ImageProcess::myDetectConnectedComponents(const cv::Mat &input,
 
   labels = cv::Mat::zeros(mat.size(), CV_32S);
   int label = 1;
-
   // 遍历图像中的每个像素
   for (int r = 0; r < mat.rows; r++) {
     for (int c = 0; c < mat.cols; c++) {
@@ -687,8 +685,8 @@ int ImageProcess::myDetectConnectedComponents(const cv::Mat &input,
         // 使用深度优先搜索标记相邻的像素
         int num = 0;
         myDFS(mat, labels, r, c, num, label);
-        label++;
         map.insert(std::pair<int, int>(label, num));
+        label++;
       }
     }
   }
@@ -744,6 +742,20 @@ QImage ImageProcess::otsuThreshold(const QImage &inputImage) {
 
   cv::Mat dst;
   cv::threshold(mat, dst, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
+                         QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::cannyEdgeDetection(const QImage &inputImage,
+                                        int threshold1, int threshold2) {
+  cv::Mat mat;
+  readImageToMat(inputImage, mat);
+
+  cv::Mat dst;
+  cv::Canny(mat, dst, threshold1, threshold2);
 
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)

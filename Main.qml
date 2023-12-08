@@ -41,6 +41,10 @@ ApplicationWindow {
             text: qsTr("图像分割")
             width: implicitWidth
         }
+        TabButton {
+            text: qsTr("边缘检测")
+            width: implicitWidth
+        }
     }
     SwipeView {
         id: view
@@ -85,6 +89,12 @@ ApplicationWindow {
         Item {
             id: windowThreshold
             WindowThreshold {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowEdgeDetection
+            WindowEdgeDetection {
                 anchors.fill: parent
             }
         }

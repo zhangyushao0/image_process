@@ -162,5 +162,11 @@ public:
     imageProvider.setImage(imageProcess.otsuThreshold(image),
                            url.toString() + "otsuThreshold");
   }
+  Q_INVOKABLE void cannyEdgeDetection(const QUrl &url) {
+    QSize size;
+    QImage image = imageProvider.requestImage(url.toString(), nullptr, size);
+    imageProvider.setImage(imageProcess.cannyEdgeDetection(image),
+                           url.toString() + "cannyEdgeDetection");
+  }
 };
 #endif // IMAGECONTROLLER_H

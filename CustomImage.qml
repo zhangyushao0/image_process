@@ -32,7 +32,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                if (image2.source !== "") {
+                if (image.source !== "") {
                     fileDialog.fileUrl = image.source;
                     fileDialog.open();
                 }

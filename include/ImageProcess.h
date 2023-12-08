@@ -34,9 +34,11 @@ public:
   QImage compressImageJPEG2000(const QImage &inputImage, int ratio = 10);
   QImage erode(const QImage &inputImage, int kernelSize = 3);
   QImage dilate(const QImage &inputImage, int kernelSize = 3);
-  QImage removeSmallComponents(const QImage &inputImage, int threshold = 8);
+  QImage removeSmallComponents(const QImage &inputImage, int threshold = 16);
   QImage globalThreshold(const QImage &inputImage, int threshold = 100);
   QImage otsuThreshold(const QImage &inputImage);
+  QImage cannyEdgeDetection(const QImage &inputImage, int threshold1 = 100,
+                            int threshold2 = 200);
 
 private:
   // 计算直方图
