@@ -740,12 +740,59 @@ QImage ImageProcess::otsuThreshold(const QImage &inputImage) {
   cv::Mat mat;
   readImageToMat(inputImage, mat);
 
-  cv::Mat dst;
-  cv::threshold(mat, dst, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+  // 计算直方图
+  const int histSize = 256;
+  std::vector<int> histogram(histSize, 0);
+  for (int y = 0; y < mat.rows; y++) {
+    for (int x = 0; x < mat.cols; x++) {
+      histogram[mat.at<uchar>(y, x)]++;
+    }
+  }
 
-  QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
-                         QImage::Format_Grayscale8)
-                      .copy();
+  // 总像素数量
+  int total = mat.rows * mat.cols;
+  // 计算总灰度和
+  float sum = 0;
+  for (int t = 0; t < histSize; t++)
+    sum += t * histogram[t];
+
+  float sumB = 0;
+  int wB = 0;
+  int wF = 0;
+
+  float varMax = 0;
+  int threshold = 0;
+
+  for (int t = 0; t < histSize; t++) {
+    wB += histogram[t]; // 后景
+    if (wB == 0)
+      continue;
+
+    wF = total - wB; // 前景
+    if (wF == 0)
+      break;
+
+    sumB += (float)(t * histogram[t]);
+
+    float mB = sumB / wB;         // 计算前景平均灰度
+    float mF = (sum - sumB) / wF; // 计算后景平均灰度
+
+    // 计算类间方差
+    float varBetween = (float)wB * (float)wF * (mB - mF) * (mB - mF);
+
+    if (varBetween > varMax) {
+      varMax = varBetween;
+      threshold = t;
+    }
+  }
+
+  cv::Mat thresholded;
+  cv::threshold(mat, thresholded, threshold, 255, cv::THRESH_BINARY);
+
+  QImage result =
+      QImage((uchar *)thresholded.data, thresholded.cols, thresholded.rows,
+             thresholded.step, QImage::Format_Grayscale8)
+          .copy();
   return result;
 }
 
