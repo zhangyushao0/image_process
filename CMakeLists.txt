@@ -35,6 +35,7 @@ qt_add_qml_module(appimage_process
     QML_FILES WindowMorphology.qml
     QML_FILES WindowThreshold.qml
     QML_FILES WindowEdgeDetection.qml
+    QML_FILES WindowDR.qml
 )
 
 # add console to the target

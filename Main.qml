@@ -45,6 +45,10 @@ ApplicationWindow {
             text: qsTr("边缘检测")
             width: implicitWidth
         }
+        TabButton {
+            text: qsTr("医学图像处理")
+            width: implicitWidth
+        }
     }
     SwipeView {
         id: view
@@ -95,6 +99,12 @@ ApplicationWindow {
         Item {
             id: windowEdgeDetection
             WindowEdgeDetection {
+                anchors.fill: parent
+            }
+        }
+        Item {
+            id: windowDR
+            WindowDR {
                 anchors.fill: parent
             }
         }

@@ -29,7 +29,7 @@ public:
                             int searchWindowSize = 14, double h = 25.0);
   QImage enhanceImageUsingSecondDerivative(const QImage &inputImage);
   QImage unsharpMask(const QImage &inputImage, int kernelSize = 3,
-                     double sigma = 1.0, double k = 10.0);
+                     double sigma = 1.0, double k = 100.0);
   QImage compressImageJPEG(const QImage &inputImage, int ratio = 10);
   QImage compressImageJPEG2000(const QImage &inputImage, int ratio = 10);
   QImage erode(const QImage &inputImage, int kernelSize = 3);
@@ -39,6 +39,7 @@ public:
   QImage otsuThreshold(const QImage &inputImage);
   QImage cannyEdgeDetection(const QImage &inputImage, int threshold1 = 100,
                             int threshold2 = 200);
+  QImage loadSelfRawImage(const QString &filePath);
 
 private:
   // 计算直方图
@@ -53,6 +54,7 @@ private:
                                    float clipLimit);
   // 将QImage转换为Mat
   void readImageToMat(const QImage &inputImage, cv::Mat &mat);
+  void readImageToMat16(const QImage &inputImage, cv::Mat &mat);
   void myNonLocalMeansDenoising(const cv::Mat &src, cv::Mat &dst,
                                 int templateWindowSize, int searchWindowSize,
                                 double h, double sigma);

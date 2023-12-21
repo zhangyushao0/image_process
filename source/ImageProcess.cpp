@@ -1,11 +1,14 @@
 #include "ImageProcess.h"
+#include <QDataStream>
 #include <QDebug>
+#include <QFile>
 #include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/photo.hpp>
 #include <qimage.h>
 #include <qsize.h>
+#include <qtypes.h>
 
 ImageProcess::ImageProcess() {}
 QImage ImageProcess::fourierTransform(const QImage &inputImage) {
@@ -96,13 +99,13 @@ QImage ImageProcess::displayHistogram(const QImage &inputImage) {
 QImage ImageProcess::histogramEqualization(const QImage &inputImage) {
   // 将QImage转换为灰度图
   cv::Mat mat;
-  readImageToMat(inputImage, mat);
+  readImageToMat16(inputImage, mat);
 
   // 直方图均衡化，具体实现为计算累计直方图，然后将累计直方图归一化，最后将原图像的像素值映射到新的像素值
   cv::Mat dst;
   myEqualizeHist(mat, dst);
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
-                         QImage::Format_Grayscale8)
+                         QImage::Format_Grayscale16)
                       .copy();
   return result;
 }
@@ -123,7 +126,6 @@ QImage ImageProcess::applyCLAHE(const QImage &inputImage, float clipLimit,
       cv::createCLAHE(clipLimit, cv::Size(tileGridSize, tileGridSize));
   cv::Mat dst;
   clahe->apply(mat, dst);
-
   // 转换为QImage
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
@@ -135,30 +137,30 @@ void ImageProcess::myCalcHist(const cv::Mat &src, cv::Mat &hist, int histSize) {
   hist = cv::Mat::zeros(1, histSize, CV_32SC1);
   for (int r = 0; r < src.rows; r++) {
     for (int c = 0; c < src.cols; c++) {
-      hist.at<int>(src.at<uchar>(r, c))++;
+      hist.at<int>(src.at<ushort>(r, c))++;
     }
   }
 }
 
 void ImageProcess::myEqualizeHist(const cv::Mat &src, cv::Mat &dst) {
   cv::Mat hist;
-  myCalcHist(src, hist, 256);
+  myCalcHist(src, hist, 1 << 16);
 
   // 计算累计直方图
-  cv::Mat cdf = cv::Mat::zeros(1, 256, CV_32SC1);
+  cv::Mat cdf = cv::Mat::zeros(1, 1 << 16, CV_32SC1);
   cdf.at<int>(0) = hist.at<int>(0);
-  for (int i = 1; i < 256; i++) {
+  for (int i = 1; i < 1 << 16; i++) {
     cdf.at<int>(i) = cdf.at<int>(i - 1) + hist.at<int>(i);
   }
 
   // 归一化
-  cdf = cdf * 255 / (src.rows * src.cols);
+  cdf = cdf * ((1 << 16) - 1) / (src.rows * src.cols);
 
   // 映射
-  dst = cv::Mat::zeros(src.size(), CV_8UC1);
+  dst = cv::Mat::zeros(src.size(), CV_16UC1);
   for (int r = 0; r < src.rows; r++) {
     for (int c = 0; c < src.cols; c++) {
-      dst.at<uchar>(r, c) = cdf.at<int>(src.at<uchar>(r, c));
+      dst.at<ushort>(r, c) = cdf.at<int>(src.at<ushort>(r, c));
     }
   }
 }
@@ -265,7 +267,12 @@ void ImageProcess::readImageToMat(const QImage &inputImage, cv::Mat &mat) {
                image.bytesPerLine());
   mat = temp.clone();
 }
-
+void ImageProcess::readImageToMat16(const QImage &inputImage, cv::Mat &mat) {
+  QImage image = inputImage.convertToFormat(QImage::Format_Grayscale16);
+  cv::Mat temp(image.height(), image.width(), CV_16UC1, image.bits(),
+               image.bytesPerLine());
+  mat = temp.clone();
+}
 QImage ImageProcess::addGaussianNoise(const QImage &inputImage, double mean,
                                       double sigma) {
   // 将QImage转换为灰度图 CV_8UC1
@@ -727,10 +734,14 @@ void ImageProcess::myDFS(const cv::Mat &input, cv::Mat &labels, int r, int c,
 QImage ImageProcess::globalThreshold(const QImage &inputImage, int threshold) {
   cv::Mat mat;
   readImageToMat(inputImage, mat);
-
+  auto start = std::chrono::high_resolution_clock::now();
   cv::Mat dst;
   cv::threshold(mat, dst, threshold, 255, cv::THRESH_BINARY);
-
+  qDebug() << "globalThreshold:"
+           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::high_resolution_clock::now() - start)
+                  .count()
+           << "ms";
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
                       .copy();
@@ -739,7 +750,7 @@ QImage ImageProcess::globalThreshold(const QImage &inputImage, int threshold) {
 QImage ImageProcess::otsuThreshold(const QImage &inputImage) {
   cv::Mat mat;
   readImageToMat(inputImage, mat);
-
+  auto start = std::chrono::high_resolution_clock::now();
   // 计算直方图
   const int histSize = 256;
   std::vector<int> histogram(histSize, 0);
@@ -788,7 +799,11 @@ QImage ImageProcess::otsuThreshold(const QImage &inputImage) {
 
   cv::Mat thresholded;
   cv::threshold(mat, thresholded, threshold, 255, cv::THRESH_BINARY);
-
+  qDebug() << "otsuThreshold:"
+           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::high_resolution_clock::now() - start)
+                  .count()
+           << "ms";
   QImage result =
       QImage((uchar *)thresholded.data, thresholded.cols, thresholded.rows,
              thresholded.step, QImage::Format_Grayscale8)
@@ -806,6 +821,35 @@ QImage ImageProcess::cannyEdgeDetection(const QImage &inputImage,
 
   QImage result = QImage((uchar *)dst.data, dst.cols, dst.rows, dst.step,
                          QImage::Format_Grayscale8)
+                      .copy();
+  return result;
+}
+
+QImage ImageProcess::loadSelfRawImage(const QString &filePath) {
+  QFile file(filePath);
+  if (!file.open(QIODevice::ReadOnly)) {
+    qDebug() << "Error opening file:" << file.errorString();
+  }
+  QDataStream stream(&file);
+  stream.setByteOrder(QDataStream::LittleEndian);
+  // 先读取4字节 宽度 4 字节 高度
+  uint32_t width, height;
+  stream >> width >> height;
+  // 再读取图像数据 每个像素两个字节，后12位有效
+  cv::Mat mat(height, width, CV_16UC1);
+  for (int r = 0; r < mat.rows; r++) {
+    for (int c = 0; c < mat.cols; c++) {
+      uint16_t pixel;
+      stream >> pixel;
+      pixel = pixel & 0x0fff;
+      float f = float(pixel) / 4095.0f * (2 ^ 16 - 1);
+      mat.at<ushort>(r, c) = pixel * f;
+    }
+  }
+
+  // 转换为QImage
+  QImage result = QImage((uchar *)mat.data, mat.cols, mat.rows, mat.step,
+                         QImage::Format_Grayscale16)
                       .copy();
   return result;
 }

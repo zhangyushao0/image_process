@@ -45,6 +45,12 @@ public:
   }
   Q_INVOKABLE void loadImage(const QUrl &url) {
     QSize size;
+    // 如果后缀为.raw则使用自定义的加载函数
+    if (url.toString().endsWith(".raw")) {
+      QImage image = imageProcess.loadSelfRawImage(url.toLocalFile());
+      imageProvider.setImage(image, url.toString());
+      return;
+    }
     QImage image(url.toLocalFile());
     imageProvider.setImage(image, url.toString());
   }
