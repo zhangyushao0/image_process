@@ -519,8 +519,18 @@ ImageProcess::enhanceImageUsingSecondDerivative(const QImage &inputImage) {
   cv::Mat kernel = (cv::Mat_<float>(3, 3) << 1, 1, 1, 1, -8, 1, 1, 1, 1);
 
   // 应用卷积操作
-  cv::Mat laplacian;
-  cv::filter2D(mat, laplacian, CV_16S, kernel);
+  cv::Mat laplacian = cv::Mat::zeros(mat.size(), CV_16S);
+  for (int r = 1; r < mat.rows - 1; r++) {
+    for (int c = 1; c < mat.cols - 1; c++) {
+      int sum = 0;
+      for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+          sum += mat.at<uchar>(r + i, c + j) * kernel.at<float>(i + 1, j + 1);
+        }
+      }
+      laplacian.at<short>(r, c) = sum;
+    }
+  }
 
   mat.convertTo(mat, CV_16S);
   cv::Mat sharpened = mat - laplacian;
