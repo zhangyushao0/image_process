@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "opencv",
-    "qt"
+    "qtbase",
+    "qtdeclarative"
   ]
 }
