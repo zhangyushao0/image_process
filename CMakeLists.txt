@@ -5,7 +5,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(MAIN_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(MAIN_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-find_package(Qt6 6.4 REQUIRED COMPONENTS Quick Core Widgets QML)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Widgets QML)
 
 # opencv
 find_package(OpenCV REQUIRED)
@@ -39,7 +39,7 @@ qt_add_qml_module(appimage_process
 )
 
 # add console to the target
-if(WIN32)
+if(MSVC)
     target_link_options(appimage_process PRIVATE "/SUBSYSTEM:CONSOLE")
 endif()
 
