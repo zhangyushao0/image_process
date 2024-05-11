@@ -34,7 +34,7 @@ jobs:
         #   are being used to locate either a vcpkg-configuration.json or vcpkg.json
         #   in order to use the builtin-baseline or the default-registry's
         #   builtin baseline.
-        # vcpkgGitCommitId: '${{ matrix.vcpkgCommitId }}'
+          vcpkgGitCommitId: f3560df86337874418ffb43433b344d600fb9078
 
         # This is only needed if the command `vcpkg install` must run at this step.
         # Instead it is highly suggested to let `run-cmake` to run vcpkg later on
