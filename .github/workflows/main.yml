@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       #-uses: actions/cache@v3   <===== YOU DO NOT NEED THIS!
+      - name: install dependencies
+        run: sudo apt install -y libsystemd-dev libxi-dev libxtst-dev
       - name: Set up Git repository
         uses: actions/checkout@v4
       # Install latest CMake and Ninja.
