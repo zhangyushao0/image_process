@@ -7,7 +7,7 @@ jobs:
     steps:
       #-uses: actions/cache@v3   <===== YOU DO NOT NEED THIS!
       - name: install dependencies
-        run: sudo apt install -y build-essential gcc g++ python3-distutils pkg-config cmake ninja-build bison gperf nasm libx11-dev libxft-dev libxext-dev libdbus-1-dev libxi-dev libxtst-dev libgl1-mesa-dev libgles2-mesa-dev libglu1-mesa-dev libtool libudev-dev libx11-xcb-dev libxcursor-dev libxdamage-dev libxinerama-dev libxrandr-dev
+        run: sudo apt install -y build-essential gcc g++ python3-distutils pkg-config cmake ninja-build bison gperf nasm libx11-dev libxft-dev libxext-dev libdbus-1-dev libxi-dev libxtst-dev libgl1-mesa-dev libgles2-mesa-dev libglu1-mesa-dev libtool libudev-dev libx11-xcb-dev libxcursor-dev libxdamage-dev libxinerama-dev libxrandr-dev autoconf-archive
       - name: Set up Git repository
         uses: actions/checkout@v4
       # Install latest CMake and Ninja.
