@@ -2,6 +2,10 @@
   "dependencies": [
     "opencv",
     "qtbase",
-    "qtdeclarative"
+    "qtdeclarative",
+    {
+      "name" : "glib",
+      "version>=" : "2.78.4#1"
+    } 
   ]
 }
