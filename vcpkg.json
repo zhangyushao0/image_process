@@ -6,6 +6,10 @@
     {
       "name" : "glib",
       "version>=" : "2.78.4#1"
+    },
+    {
+      "name" : "libcap",
+      "version>=" : "2.69#5"
     } 
   ]
 }
